@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #chat-container {
+            height: 400px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #user-input {
+            width: 70%;
+            padding: 5px;
+        }
+        button {
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Chatbot</h1>
+    <input type="file" id="pdf-upload" accept=".pdf">
+    <button onclick="uploadPDF()">Upload PDF</button>
+    <div id="upload-status"></div>
+    <div id="chat-container"></div>
+    <input type="text" id="user-input" placeholder="Type your message...">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        let pdfUploaded = false;
+
+        async function uploadPDF() {
+            const fileInput = document.getElementById('pdf-upload');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a PDF file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('http://localhost:8000/upload-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    document.getElementById('upload-status').innerText = 'PDF uploaded successfully';
+                    pdfUploaded = true;
+                } else {
+                    throw new Error('PDF upload failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('upload-status').innerText = 'PDF upload failed';
+            }
+        }
+
+        async function sendMessage() {
+            if (!pdfUploaded) {
+                alert('Please upload a PDF first');
+                return;
+            }
+
+            const userInput = document.getElementById('user-input');
+            const message = userInput.value.trim();
+            if (message === '') return;
+
+            appendMessage('You: ' + message);
+            userInput.value = '';
+
+            const formData = new FormData();
+            formData.append('query', message);
+
+            try {
+                const response = await fetch('http://localhost:8000/chat', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    appendMessage('Bot: ' + data.response);
+                } else {
+                    throw new Error('Chat request failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                appendMessage('Bot: Sorry, I encountered an error.');
+            }
+        }
+
+        function appendMessage(message) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageElement = document.createElement('div');
+            messageElement.innerText = message;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
